@@ -32,6 +32,8 @@ targets:
       path: Generated/App-Info.plist
       properties:
         CFBundleDisplayName: 流体音乐
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         CFBundleDevelopmentRegion: zh-Hans
         CFBundleLocalizations: [zh-Hans, en]
         UIBackgroundModes: [audio]
@@ -85,6 +87,8 @@ targets:
       path: Generated/Widget-Info.plist
       properties:
         CFBundleDisplayName: 流体音乐
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         FluidMusicAppGroup: $(APP_GROUP_ID)
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension

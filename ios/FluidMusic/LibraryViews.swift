@@ -29,6 +29,7 @@ struct LibraryView: View {
             } else {
                 Section("浏览音乐") {
                     NavigationLink { SongListView(title: "全部歌曲", songs: library.songs, showIndex: true) } label: { category("歌曲", icon: "music.note", count: library.songs.count) }
+                        .accessibilityIdentifier("browseSongs")
                     NavigationLink { CollectionsView(kind: .album) } label: { category("专辑", icon: "square.stack", count: Set(library.songs.map(\.album)).count) }
                     NavigationLink { CollectionsView(kind: .artist) } label: { category("艺术家", icon: "person.2", count: Set(library.songs.map(\.artist)).count) }
                     NavigationLink { CollectionsView(kind: .folder) } label: { category("文件夹", icon: "folder", count: library.allFolders.count) }

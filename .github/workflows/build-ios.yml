@@ -45,14 +45,20 @@ jobs:
           d=json.load(open('devices.json'))['devices']
           candidates=[(runtime, item) for runtime, devices in d.items() if 'iOS-27' in runtime for item in devices if 'iPhone' in item['name'] and item.get('isAvailable',True)]
           if not candidates: raise SystemExit('No available iOS 27 iPhone simulator; do not claim iOS 27 testing')
-          runtime,item=sorted(candidates,key=lambda pair: ('Pro-Max' in pair[1]['name'],pair[0],pair[1]['name']),reverse=True)[0]
+          phones=[pair for pair in candidates if 'Duo' not in pair[1]['name']]
+          if not phones: raise SystemExit('No conventional iPhone simulator available')
+          runtime,item=sorted(phones,key=lambda pair: (pair[1]['name']=='iPhone 16 Pro Max','Pro Max' in pair[1]['name'],pair[0],pair[1]['name']),reverse=True)[0]
           with open(os.environ['GITHUB_OUTPUT'],'a') as f: f.write('udid='+item['udid']+'\n')
           print(runtime, item['name'], item['udid'])
           PY
+      - name: Boot simulator before XCTest
+        run: |
+          xcrun simctl boot '${{ steps.simulator.outputs.udid }}' || true
+          xcrun simctl bootstatus '${{ steps.simulator.outputs.udid }}' -b
       - name: Run unit and UI tests on iOS 27
         run: |
           set -o pipefail
-          xcodebuild -project ios/FluidMusic.xcodeproj -scheme FluidMusic -configuration Debug -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.udid }}' -derivedDataPath build/simulator -resultBundlePath TestResults.xcresult -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO test 2>&1 | tee simulator-tests.log | xcbeautify
+          NSUnbufferedIO=YES xcodebuild -project ios/FluidMusic.xcodeproj -scheme FluidMusic -configuration Debug -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.udid }}' -destination-timeout 120 -derivedDataPath build/simulator -resultBundlePath TestResults.xcresult -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO test 2>&1 | tee simulator-tests.log | xcbeautify
       - name: Export screenshots and test summary
         if: always()
         run: |

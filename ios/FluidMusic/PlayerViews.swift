@@ -12,14 +12,14 @@ struct NowPlayingView: View {
     var body: some View {
         GeometryReader { geometry in
             ScrollView {
-                VStack(spacing: 18) {
+                VStack(spacing: 12) {
                     header
                     TabView(selection: $page) {
                         VinylDisc(song: player.song, playing: player.isPlaying).padding(.horizontal, 18).tag(0)
                         LyricsView().padding(.horizontal, 20).tag(1)
                     }
                     .tabViewStyle(.page(indexDisplayMode: .always))
-                    .frame(height: max(260, min(440, geometry.size.height * 0.47)))
+                    .frame(height: max(230, min(380, geometry.size.height - 540)))
                     .accessibilityIdentifier("coverLyricsPages")
                     trackInformation
                     VStack(spacing: 0) {
@@ -39,8 +39,9 @@ struct NowPlayingView: View {
                     }.padding(.horizontal, 34).padding(.top, 8)
                     footer
                 }
-                .frame(maxWidth: 660).frame(maxWidth: .infinity).padding(.bottom, 24)
+                .frame(maxWidth: 660).frame(maxWidth: .infinity).padding(.bottom, 16)
             }
+            .accessibilityIdentifier("playerScroll")
             .background { MusicBackdrop() }.scrollIndicators(.hidden)
         }
         .sheet(item: $panel) { panel in
@@ -68,7 +69,7 @@ struct NowPlayingView: View {
                 Button("睡眠定时", systemImage: "moon") { panel = .sleep }
                 if let song = player.song { ShareLink(item: song.fileURL) { Label("分享音频", systemImage: "square.and.arrow.up") } }
             } label: { Image(systemName: "ellipsis").frame(width: 44, height: 44) }.buttonStyle(.glass).accessibilityLabel("播放设置")
-        }.padding(.horizontal, 24).padding(.top, 24)
+        }.padding(.horizontal, 24).padding(.top, 16)
     }
     private var trackInformation: some View {
         HStack(alignment: .center, spacing: 18) {

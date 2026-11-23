@@ -2,6 +2,7 @@
 """Package real device builds. These files intentionally need user re-signing."""
 import hashlib
 import json
+import os
 import pathlib
 import plistlib
 import shutil
@@ -22,6 +23,7 @@ if "arm64" not in details or "Mach-O" not in details:
 if info.get("DTPlatformName") != "iphoneos":
     raise SystemExit("Refusing to package a simulator build as an IPA")
 report = {"build": build, "version": info["CFBundleShortVersionString"],
+          "source_commit": os.environ.get("GITHUB_SHA"), "repository": os.environ.get("GITHUB_REPOSITORY"),
           "sdk": info.get("DTSDKName"), "xcode": info.get("DTXcode"),
           "minimum_ios": info.get("MinimumOSVersion"), "binary": details,
           "signed": False, "physical_device_tested": False, "artifacts": []}

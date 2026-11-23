@@ -129,12 +129,7 @@ actor ImportWorker {
                 let isOwnMusic = root.standardizedFileURL.path == LibraryPaths.music.standardizedFileURL.path
                 var candidates: [URL] = []
                 if isDirectory {
-                    if let iterator = FileManager.default.enumerator(at: root, includingPropertiesForKeys: [.isRegularFileKey, .isSymbolicLinkKey], options: [.skipsHiddenFiles]) {
-                        for case let file as URL in iterator {
-                            let values = try? file.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey])
-                            if values?.isRegularFile == true, values?.isSymbolicLink != true { candidates.append(file) }
-                        }
-                    }
+                    candidates = regularFiles(in: root)
                 } else { candidates = [root] }
                 func relative(_ file: URL) -> String {
                     if isOwnMusic { return String(file.path.dropFirst(root.path.count + 1)) }
@@ -210,6 +205,15 @@ actor ImportWorker {
             } catch { result.failures.append("\(root.lastPathComponent)：\(error.localizedDescription)") }
         }
         return result
+    }
+    private func regularFiles(in root: URL) -> [URL] {
+        guard let iterator = FileManager.default.enumerator(at: root, includingPropertiesForKeys: [.isRegularFileKey, .isSymbolicLinkKey], options: [.skipsHiddenFiles]) else { return [] }
+        var files: [URL] = []
+        for case let file as URL in iterator {
+            let values = try? file.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey])
+            if values?.isRegularFile == true, values?.isSymbolicLink != true { files.append(file) }
+        }
+        return files
     }
     private func sidecarURL(for audio: URL) -> URL? {
         let target = audio.deletingPathExtension().lastPathComponent.lowercased() + ".lrc"
