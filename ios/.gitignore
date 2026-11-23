@@ -1,0 +1,6 @@
+Generated/
+*.xcodeproj/
+FluidMusic/Assets.xcassets/
+.DS_Store
+__pycache__/
+*.pyc

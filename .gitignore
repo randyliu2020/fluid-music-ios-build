@@ -1,0 +1,8 @@
+build/
+dist/
+*.log
+*.xcresult/
+screenshots/
+test-summary.json
+devices.json
+.DS_Store

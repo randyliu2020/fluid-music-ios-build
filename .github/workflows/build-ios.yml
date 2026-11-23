@@ -1,0 +1,83 @@
+name: Build and test iOS 27
+on:
+  push:
+    branches: ['codex/ios27-native-port', 'main']
+    paths: ['ios/**', '.github/workflows/build-ios.yml', 'docs/ios-*.md']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  ios:
+    runs-on: xcode-27
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode 27 and verify SDK
+        run: |
+          sudo xcode-select -s /Applications/Xcode_27.2.app/Contents/Developer
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
+          python3 -c 'import subprocess; v=subprocess.check_output(["xcrun","--sdk","iphoneos","--show-sdk-version"],text=True).strip(); assert int(v.split(".")[0]) >= 27, v'
+      - name: Prepare native project and icon
+        run: |
+          if ! command -v xcodegen >/dev/null; then brew install xcodegen; fi
+          swift ios/scripts/prepare-icon.swift "$GITHUB_WORKSPACE"
+          cd ios
+          xcodegen generate
+      - name: Build unsigned arm64 device app
+        run: |
+          set -o pipefail
+          xcodebuild -project ios/FluidMusic.xcodeproj -scheme FluidMusic -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath build/device CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build 2>&1 | tee device-build.log | xcbeautify
+      - name: Package self-sign and widget editions
+        run: |
+          python3 ios/scripts/package-ipa.py build/device/Build/Products/Release-iphoneos/FluidMusic.app dist "$GITHUB_RUN_NUMBER"
+          cp docs/ios-install.md dist/INSTALL.md
+          cp docs/ios-feature-matrix.md dist/FEATURES.md
+      - name: Select iOS 27 simulator
+        id: simulator
+        run: |
+          xcrun simctl list devices available -j > devices.json
+          python3 - <<'PY'
+          import json, os
+          d=json.load(open('devices.json'))['devices']
+          candidates=[(runtime, item) for runtime, devices in d.items() if 'iOS-27' in runtime for item in devices if 'iPhone' in item['name'] and item.get('isAvailable',True)]
+          if not candidates: raise SystemExit('No available iOS 27 iPhone simulator; do not claim iOS 27 testing')
+          runtime,item=sorted(candidates,key=lambda pair: ('Pro-Max' in pair[1]['name'],pair[0],pair[1]['name']),reverse=True)[0]
+          with open(os.environ['GITHUB_OUTPUT'],'a') as f: f.write('udid='+item['udid']+'\n')
+          print(runtime, item['name'], item['udid'])
+          PY
+      - name: Run unit and UI tests on iOS 27
+        run: |
+          set -o pipefail
+          xcodebuild -project ios/FluidMusic.xcodeproj -scheme FluidMusic -configuration Debug -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.udid }}' -derivedDataPath build/simulator -resultBundlePath TestResults.xcresult -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO test 2>&1 | tee simulator-tests.log | xcbeautify
+      - name: Export screenshots and test summary
+        if: always()
+        run: |
+          if [ -d TestResults.xcresult ]; then
+            mkdir -p screenshots
+            xcrun xcresulttool export attachments --path TestResults.xcresult --output-path screenshots || true
+            xcrun xcresulttool get test-results summary --path TestResults.xcresult > test-summary.json || true
+          fi
+      - name: Upload IPA files
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: FluidMusic-iOS-unsigned-build${{ github.run_number }}
+          path: dist/
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Upload tests and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: FluidMusic-iOS-test-evidence-build${{ github.run_number }}
+          path: |
+            *-build.log
+            simulator-tests.log
+            test-summary.json
+            screenshots/
+            TestResults.xcresult/
+          retention-days: 30
